@@ -11,9 +11,10 @@ int main(int argc, char *argv[]) {
     Options opts;
 
     /* Step 1: Parse command-line options */
-    /*if (parse_options(argc, argv, &opts) != 0) {
+    if (parse_options(argc, argv, &opts) != 0) {
         return EXIT_FAILURE;
-    }*/
+    }
+
     /* Step 2: Read all processes from /proc */
     ProcessInfo *procs = malloc(MAX_PROCESSES * sizeof(ProcessInfo));
     if (!procs) {
