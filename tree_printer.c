@@ -1,46 +1,49 @@
-/* tree_printer.c */
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>   /* getpid() for -h option */
+#include <unistd.h>
 #include "tree_printer.h"
 
-/* UTF-8 box-drawing characters for the tree */
-#define BRANCH  "├─"   /* intermediate child */
-#define LAST    "└─"   /* last child */
-#define VERT    "│ "   /* vertical line continuation */
-#define EMPTY   "  "   /* space where no line is needed */
+/* UTF-8 box-drawing characters */
+#define U_BRANCH  "├─"
+#define U_LAST    "└─"
+#define U_VERT    "│ "
+#define U_EMPTY   "  "
 
-/* ANSI escape codes for highlighting */
+/* ASCII box-drawing characters (Option -A) */
+#define A_BRANCH  "|-"
+#define A_LAST    "`-"
+#define A_VERT    "| "
+#define A_EMPTY   "  "
+
 #define ANSI_BOLD    "\033[1m"
 #define ANSI_RESET   "\033[0m"
 
-/*
- * Recursive helper.
- * prefix: the string of connectors built up from ancestor levels
- * is_last: whether this node is the last child of its parent
- */
 static void print_node(TreeNode *node, const char *prefix,
                         int is_last, const Options *opts,
                         int highlight_pid) {
     if (!node) return;
 
-    /* Print the connector for this level */
     printf("%s", prefix);
-    printf("%s", is_last ? LAST : BRANCH);
 
-    /* Highlight if this is the target PID */
+    /* Choix entre ASCII et UTF-8 */
+    if (opts->ascii_trace) {
+        printf("%s", is_last ? A_LAST : A_BRANCH);
+    } else {
+        printf("%s", is_last ? U_LAST : U_BRANCH);
+    }
+
     int do_highlight = (opts->highlight && node->proc->pid == highlight_pid);
     if (do_highlight) printf("%s", ANSI_BOLD);
 
-    /* Print process name */
     printf("%s", node->proc->name);
 
-    /* -p: show PID */
+    /* Options d'affichage */
     if (opts->show_pids) {
         printf("(%d)", node->proc->pid);
     }
-
-    /* -a: show command line arguments */
+    if (opts->show_pgid) {
+        printf("[pgid:%d]", node->proc->pgid);
+    }
     if (opts->show_args && node->proc->cmdline[0] != '\0') {
         printf(" %s", node->proc->cmdline);
     }
@@ -48,12 +51,17 @@ static void print_node(TreeNode *node, const char *prefix,
     if (do_highlight) printf("%s", ANSI_RESET);
     printf("\n");
 
-    /* Build the prefix for children */
+    /* Préparation du préfixe enfant */
     char child_prefix[1024];
-    snprintf(child_prefix, sizeof(child_prefix), "%s%s",
-             prefix, is_last ? EMPTY : VERT);
+    if (opts->ascii_trace) {
+        snprintf(child_prefix, sizeof(child_prefix), "%s%s",
+                 prefix, is_last ? A_EMPTY : A_VERT);
+    } else {
+        snprintf(child_prefix, sizeof(child_prefix), "%s%s",
+                 prefix, is_last ? U_EMPTY : U_VERT);
+    }
 
-    /* Recurse into children */
+    /* Récursion */
     for (int i = 0; i < node->child_count; i++) {
         int child_is_last = (i == node->child_count - 1);
         print_node(node->children[i], child_prefix,
@@ -64,19 +72,21 @@ static void print_node(TreeNode *node, const char *prefix,
 void print_tree(TreeNode *node, const Options *opts, int highlight_pid) {
     if (!node) return;
 
-    /* Print the root node without any prefix connector */
     int do_highlight = (opts->highlight && node->proc->pid == highlight_pid);
     if (do_highlight) printf("%s", ANSI_BOLD);
 
     printf("%s", node->proc->name);
-    if (opts->show_pids)  printf("(%d)", node->proc->pid);
-    if (opts->show_args && node->proc->cmdline[0] != '\0')
+
+    if (opts->show_pids) printf("(%d)", node->proc->pid);
+    if (opts->show_pgid) printf("[pgid:%d]", node->proc->pgid);
+
+    if (opts->show_args && node->proc->cmdline[0] != '\0') {
         printf(" %s", node->proc->cmdline);
+    }
 
     if (do_highlight) printf("%s", ANSI_RESET);
     printf("\n");
 
-    /* Print all children */
     for (int i = 0; i < node->child_count; i++) {
         int is_last = (i == node->child_count - 1);
         print_node(node->children[i], "", is_last, opts, highlight_pid);
