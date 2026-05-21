@@ -1,15 +1,10 @@
-/* proc_reader.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>    /* opendir, readdir */
-#include <ctype.h>     /* isdigit */
+#include <dirent.h>
+#include <ctype.h>
 #include "proc_reader.h"
 
-/*
- * Returns 1 if every character in str is a digit, 0 otherwise.
- * Used to check if a /proc entry is a PID directory.
- */
 static int is_all_digits(const char *str) {
     if (!str || *str == '\0') return 0;
     while (*str) {
@@ -19,22 +14,17 @@ static int is_all_digits(const char *str) {
     return 1;
 }
 
-/*
- * Parse /proc/[pid]/status to extract Name, Pid, and PPid.
- * Returns 0 on success, -1 if the file cannot be read.
- */
 static int parse_status_file(int pid, ProcessInfo *proc) {
     char path[64];
     char line[256];
     FILE *fp;
-    int got_name = 0, got_pid = 0, got_ppid = 0;
+    int got_name = 0, got_pid = 0, got_ppid = 0, got_tgid = 0;
 
     snprintf(path, sizeof(path), "/proc/%d/status", pid);
     fp = fopen(path, "r");
-    if (!fp) return -1;  /* Process may have died */
+    if (!fp) return -1; /* Géré proprement : si le processus disparaît, on ignore */
 
     while (fgets(line, sizeof(line), fp)) {
-        /* Remove trailing newline */
         line[strcspn(line, "\n")] = '\0';
 
         if (strncmp(line, "Name:\t", 6) == 0) {
@@ -47,20 +37,31 @@ static int parse_status_file(int pid, ProcessInfo *proc) {
         } else if (strncmp(line, "PPid:\t", 6) == 0) {
             proc->ppid = atoi(line + 6);
             got_ppid = 1;
+        } else if (strncmp(line, "Tgid:\t", 6) == 0) {
+            proc->tgid = atoi(line + 6);
+            got_tgid = 1;
         }
+    }
+    fclose(fp);
 
-        /* Stop early once we have what we need */
-        if (got_name && got_pid && got_ppid) break;
+    /* Récupération du PGID via stat pour l'option -g */
+    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+    fp = fopen(path, "r");
+    if (fp) {
+        int unused_pid;
+        char unused_comm[256];
+        char unused_state;
+        int unused_ppid;
+        int pgid = 0;
+        if (fscanf(fp, "%d %s %c %d %d", &unused_pid, unused_comm, &unused_state, &unused_ppid, &pgid) == 5) {
+            proc->pgid = pgid;
+        }
+        fclose(fp);
     }
 
-    fclose(fp);
     return (got_name && got_pid && got_ppid) ? 0 : -1;
 }
 
-/*
- * Read /proc/[pid]/cmdline for the full command line.
- * cmdline arguments are separated by null bytes — we replace them with spaces.
- */
 static void parse_cmdline_file(int pid, char *cmdline_buf, int buf_size) {
     char path[64];
     FILE *fp;
@@ -83,16 +84,13 @@ static void parse_cmdline_file(int pid, char *cmdline_buf, int buf_size) {
 
     cmdline_buf[len] = '\0';
 
-    /* Replace null bytes (argument separators) with spaces */
+    /* Remplacement des octets nuls par des espaces pour la gestion de l'option -a */
     for (i = 0; i < len - 1; i++) {
         if (cmdline_buf[i] == '\0') cmdline_buf[i] = ' ';
     }
 }
 
-/*
- * Main function: scan all of /proc and fill the procs[] array.
- */
-int read_all_processes(ProcessInfo *procs, int max_procs) {
+int read_all_processes(ProcessInfo *procs, int max_procs, int hide_threads) {
     DIR *proc_dir;
     struct dirent *entry;
     int count = 0;
@@ -104,7 +102,6 @@ int read_all_processes(ProcessInfo *procs, int max_procs) {
     }
 
     while ((entry = readdir(proc_dir)) != NULL && count < max_procs) {
-        /* Skip non-PID entries like "self", "net", etc. */
         if (!is_all_digits(entry->d_name)) continue;
 
         int pid = atoi(entry->d_name);
@@ -113,13 +110,15 @@ int read_all_processes(ProcessInfo *procs, int max_procs) {
         ProcessInfo *p = &procs[count];
         memset(p, 0, sizeof(ProcessInfo));
 
-        /* Try to read the status file */
         if (parse_status_file(pid, p) != 0) {
-            /* Process vanished between readdir() and fopen() — skip it */
             continue;
         }
 
-        /* Also read cmdline for the -a option */
+        /* Option -T: Ignorer les processus qui sont des threads */
+        if (hide_threads && (p->pid != p->tgid)) {
+            continue;
+        }
+
         parse_cmdline_file(pid, p->cmdline, MAX_NAME_LEN);
 
         count++;

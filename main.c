@@ -1,7 +1,6 @@
-/* main.c */
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>   /* getpid() */
+#include <unistd.h>
 #include "options.h"
 #include "proc_reader.h"
 #include "tree_builder.h"
@@ -10,10 +9,11 @@
 int main(int argc, char *argv[]) {
     Options opts;
 
-    /* Step 1: Parse command-line options */
-    /*if (parse_options(argc, argv, &opts) != 0) {
+    /* Step 1: Décommenté et finalisé - Parse command-line options */
+    if (parse_options(argc, argv, &opts) != 0) {
         return EXIT_FAILURE;
-    }*/
+    }
+
     /* Step 2: Read all processes from /proc */
     ProcessInfo *procs = malloc(MAX_PROCESSES * sizeof(ProcessInfo));
     if (!procs) {
@@ -21,7 +21,8 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    int proc_count = read_all_processes(procs, MAX_PROCESSES);
+    /* Ajout de la gestion de l'option -T (masquer les threads) */
+    int proc_count = read_all_processes(procs, MAX_PROCESSES, opts.hide_threads);
     if (proc_count < 0) {
         fprintf(stderr, "Error: failed to read /proc\n");
         free(procs);
@@ -29,7 +30,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* Step 3: Determine the root PID */
-    int root_pid = (opts.target_pid > 0) ? opts.target_pid : 1;
+    /* Si on veut juste voir les parents d'un PID (-s), on a besoin de construire l'arbre depuis PID 1 */
+    int root_pid = (opts.target_pid > 0 && !opts.show_parents_only) ? opts.target_pid : 1;
 
     /* Step 4: Build the tree */
     TreeNode *root = build_tree(procs, proc_count, root_pid);
@@ -38,6 +40,11 @@ int main(int argc, char *argv[]) {
                 root_pid);
         free(procs);
         return EXIT_FAILURE;
+    }
+
+    /* Step 4b: Filtrage des parents (-s) */
+    if (opts.show_parents_only && opts.target_pid > 0) {
+        filter_parents_only(root, opts.target_pid);
     }
 
     /* Step 5: Sort if -n option given */
