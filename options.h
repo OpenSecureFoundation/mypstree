@@ -18,6 +18,7 @@ typedef struct {
     int show_ns_changes;   /* -S: Transitions de namespace */
     int show_selinux;      /* -Z: Affiche les contextes SELinux */
     int long_lines;
+    int force_utf8;
 } Options;
 
 void print_usage(const char *program_name);

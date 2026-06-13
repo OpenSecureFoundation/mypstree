@@ -25,13 +25,14 @@ void print_usage(const char *program_name) {
         "  -V    Afficher la version\n"
         "  -H    Aide\n"
         "  -Z    Afficher les contextes SELinux\n"
-        "  -l    Ne pas tronquer les lignes longues (lignes entieres)\n",
+        "  -l    Ne pas tronquer les lignes longues (lignes entieres)\n"
+        "  -U    forcer l'utilisation des caracteres de dessin UTF-8(unicode)\n",
         program_name);
 }
 
 int parse_options(int argc, char *argv[], Options *opts) {
     int opt;
-    
+
     opts->show_pids = 0;
     opts->highlight = 0;
     opts->sort_by_pid = 0;
@@ -48,14 +49,15 @@ int parse_options(int argc, char *argv[], Options *opts) {
     opts->show_ns_changes = 0;
     opts->show_selinux = 0;
     opts->long_lines = 0;
-    while ((opt = getopt(argc, argv, "phnacHAgTsVtC:N:SZl")) != -1) {
+    opts->force_utf8 = 0;
+    while ((opt = getopt(argc, argv, "phnacHAgTsVtC:N:SZlU")) != -1) {
         switch (opt) {
             case 'p': opts->show_pids = 1; break;
             case 'h': opts->highlight = 1; break;
             case 'n': opts->sort_by_pid = 1; break;
             case 'a': opts->show_args = 1; break;
             case 'c': opts->disable_compact = 1; break;
-            case 'A': opts->ascii_trace = 1; break;
+            case 'A': opts->ascii_trace = 1;  opts->force_utf8 =0; break;
             case 'g': opts->show_pgid = 1; break;
             case 's': opts->show_parents_only = 1; break;
             case 'T': opts->hide_threads = 1; break;
@@ -71,6 +73,10 @@ int parse_options(int argc, char *argv[], Options *opts) {
             case 'H':
                 print_usage(argv[0]);
                 exit(EXIT_SUCCESS);
+            case 'U':
+                opts->force_utf8 = 1;
+                opts->ascii_trace = 0;
+            break;
             default:
                 print_usage(argv[0]);
                 return -1;
