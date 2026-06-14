@@ -24,7 +24,8 @@ void print_usage(const char *program_name) {
         "  -S    Afficher les transitions de namespace\n"
         "  -V    Afficher la version\n"
         "  -H    Aide\n"
-        "  -Z    Afficher les contextes SELinux\n",
+        "  -Z    Afficher les contextes SELinux\n"
+        "  -l    Ne pas tronquer les lignes longues (lignes entieres)\n",
         program_name);
 }
 
@@ -46,7 +47,8 @@ int parse_options(int argc, char *argv[], Options *opts) {
     opts->ns_sort = NULL;
     opts->show_ns_changes = 0;
     opts->show_selinux = 0;
-    while ((opt = getopt(argc, argv, "phnacHAgTsVtC:N:S")) != -1) {
+    opts->long_lines = 0;
+    while ((opt = getopt(argc, argv, "phnacHAgTsVtC:N:SZl")) != -1) {
         switch (opt) {
             case 'p': opts->show_pids = 1; break;
             case 'h': opts->highlight = 1; break;
@@ -62,6 +64,7 @@ int parse_options(int argc, char *argv[], Options *opts) {
             case 'N': opts->ns_sort = optarg; break;
             case 'S': opts->show_ns_changes = 1; break;
             case 'Z': opts->show_selinux = 1; break;
+            case 'l': opts->long_lines = 1; break;
             case 'V':
                 printf("mypstree version %s\n", VERSION);
                 exit(EXIT_SUCCESS);
