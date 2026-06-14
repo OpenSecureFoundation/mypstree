@@ -16,6 +16,7 @@ typedef struct {
     ino_t ns_net;                 // Pour -N et -S (inode Namespace)
     char name[MAX_NAME_LEN];
     char cmdline[MAX_NAME_LEN];
+    char selinux_context[256];
 } ProcessInfo;
 
 int read_all_processes(ProcessInfo *procs, int max_procs, int hide_threads);

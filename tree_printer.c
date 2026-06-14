@@ -58,6 +58,7 @@ static void print_node(TreeNode *node, const char *prefix, int is_last, const Op
     if (duplicate_count > 1) printf("]");
 
     // Arguments supplementaires
+    if (opts->show_selinux) printf(" [%s]", node->proc->selinux_context);
     if (opts->show_pids) printf("(%d)", node->proc->pid);
     if (opts->show_pgid) printf("[pgid:%d]", node->proc->pgid);
     if (opts->show_args && node->proc->cmdline[0] != '\0') printf(" %s", node->proc->cmdline);
@@ -92,6 +93,7 @@ void print_tree(TreeNode *node, const Options *opts) {
 
     set_color(node, opts);
     printf("%s", node->proc->name);
+    if (opts->show_selinux) printf(" [%s]", node->proc->selinux_context);
     if (opts->show_pids) printf("(%d)", node->proc->pid);
     printf("%s\n", ANSI_RESET);
 

@@ -16,6 +16,7 @@ typedef struct {
     char *color_attr;      /* -C: Colorisation (ex: age) */
     char *ns_sort;         /* -N: Tri par namespace */
     int show_ns_changes;   /* -S: Transitions de namespace */
+    int show_sekinux;      /* -Z: Affiche les contextes SELinux */
 } Options;
 
 void print_usage(const char *program_name);

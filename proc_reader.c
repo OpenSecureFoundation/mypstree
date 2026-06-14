@@ -77,7 +77,28 @@ static int parse_status_file(int pid, int is_task, int tgid, ProcessInfo *proc) 
     if (is_task) snprintf(ns_path, sizeof(ns_path), "/proc/%d/task/%d/ns/net", tgid, pid);
     else snprintf(ns_path, sizeof(ns_path), "/proc/%d/ns/net", pid);
     if (stat(ns_path, &st) == 0) proc->ns_net = st.st_ino;
+    // --- mypstree -Z --- //
+    char attr_path[128];
+    if (is_task) {
+        snprintf(attr_path, sizeof(attr_path), "/proc/%d/task/%d/attr/current", tgid, pid);
+    } else {
+        snprintf(attr_path, sizeof(attr_path), "/proc/%d/attr/current", pid);
+    }
 
+    FILE *fattr = fopen(attr_path, "r");
+    if (fattr) {
+        if (fgets(proc->selinux_context, sizeof(proc->selinux_context), fattr)) {
+            // On retire le saut de ligne (\n) s'il y en a un
+            proc->selinux_context[strcspn(proc->selinux_context, "\n")] = '\0';
+        } else {
+            strncpy(proc->selinux_context, "unconfined", sizeof(proc->selinux_context));
+        }
+        fclose(fattr);
+    } else {
+        // Si SELinux est désactivé sur la machine ou inaccessible
+        strncpy(proc->selinux_context, "n/a", sizeof(proc->selinux_context));
+    }
+    
     return (got_name && got_pid) ? 0 : -1;
 }
 
