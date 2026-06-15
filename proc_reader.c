@@ -63,6 +63,14 @@ static int parse_status_file(int pid, int is_task, int tgid, ProcessInfo *proc) 
         } else if (!is_task && strncmp(line, "Tgid:\t", 6) == 0) {
             proc->tgid = atoi(line + 6);
         }
+        if (strncmp(line, "Uid:", 4) == 0) {
+        unsigned int real_u, eff_u, saved_u, fs_u;
+        // On saute "Uid:" et on extrait les 4 entiers
+        if (sscanf(line + 4, "%u %u %u %u", &real_u, &eff_u, &saved_u,&fs_u) >= 2)
+        {
+            proc->uid = (uid_t)eff_u; // On stocke l'UID effectif
+        }
+    }
     }
     fclose(fp);
     

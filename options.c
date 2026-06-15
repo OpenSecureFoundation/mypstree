@@ -26,7 +26,10 @@ void print_usage(const char *program_name) {
         "  -H    Aide\n"
         "  -Z    Afficher les contextes SELinux\n"
         "  -l    Ne pas tronquer les lignes longues (lignes entieres)\n"
-        "  -U    forcer l'utilisation des caracteres de dessin UTF-8(unicode)\n",
+        "  -U    forcer l'utilisation des caracteres de dessin UTF-8(unicode)\n"
+        "  -u    Afficher les transitions d'utilisateurs (UID)\n"
+        "  -G    Utiliser les caracteres de dessin de ligne VT100\n"
+        "  -d    Limiter la profondeur d'affichage de l'arbre\n",
         program_name);
 }
 
@@ -50,14 +53,17 @@ int parse_options(int argc, char *argv[], Options *opts) {
     opts->show_selinux = 0;
     opts->long_lines = 0;
     opts->force_utf8 = 0;
-    while ((opt = getopt(argc, argv, "phnacHAgTsVtC:N:SZlU")) != -1) {
+    opts->show_uid_changes = 0;
+    opts->vt100_trace = 0;
+    opts->max_depth = -1;
+    while ((opt = getopt(argc, argv, "phnacHAgTsVtC:N:SZlUud:G")) != -1) {
         switch (opt) {
             case 'p': opts->show_pids = 1; break;
             case 'h': opts->highlight = 1; break;
             case 'n': opts->sort_by_pid = 1; break;
             case 'a': opts->show_args = 1; break;
             case 'c': opts->disable_compact = 1; break;
-            case 'A': opts->ascii_trace = 1;  opts->force_utf8 =0; break;
+            case 'A': opts->ascii_trace = 1;  opts->force_utf8 =0;opts->vt100_trace = 0; break;
             case 'g': opts->show_pgid = 1; break;
             case 's': opts->show_parents_only = 1; break;
             case 'T': opts->hide_threads = 1; break;
@@ -67,6 +73,14 @@ int parse_options(int argc, char *argv[], Options *opts) {
             case 'S': opts->show_ns_changes = 1; break;
             case 'Z': opts->show_selinux = 1; break;
             case 'l': opts->long_lines = 1; break;
+            case 'u': opts->show_uid_changes = 1;break;
+            case 'G':opts->vt100_trace = 1;opts->ascii_trace = 0;opts->force_utf8 = 0; break;
+            case 'd': opts->max_depth = atoi(optarg);
+            if (opts->max_depth < 0) {
+                fprintf(stderr, "Erreur : La profondeur doit être un entier positif.\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
             case 'V':
                 printf("mypstree version %s\n", VERSION);
                 exit(EXIT_SUCCESS);

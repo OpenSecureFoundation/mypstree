@@ -19,6 +19,9 @@ typedef struct {
     int show_selinux;      /* -Z: Affiche les contextes SELinux */
     int long_lines;
     int force_utf8;
+    int show_uid_changes;
+    int vt100_trace;
+    int max_depth; /* -d:limiter la profondeur d'affichage(option du groupe) */
 } Options;
 
 void print_usage(const char *program_name);

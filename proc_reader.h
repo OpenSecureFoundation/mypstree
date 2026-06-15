@@ -11,6 +11,7 @@ typedef struct {
     int ppid;
     int tgid;
     int pgid;
+    uid_t uid;
     int is_thread;
     unsigned long long starttime; // Pour -C age
     ino_t ns_net;                 // Pour -N et -S (inode Namespace)
